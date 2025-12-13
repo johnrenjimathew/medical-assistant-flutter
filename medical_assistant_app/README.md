@@ -1,16 +1,41 @@
-# medical_assistant_app
+# Medical Assistant & Reminder App
 
-A new Flutter project.
+## Overview
+This is a Flutter-based mobile application developed as a BTech mini project.
+The application helps users manage medications through reminders, drug
+interaction warnings, and accessibility-focused features.
 
-## Getting Started
+## Problem Statement
+Many users, especially elderly and visually impaired individuals, struggle
+with managing medication schedules and understanding drug interactions.
+This project aims to provide a simple, accessible solution using mobile
+technology.
 
-This project is a starting point for a Flutter application.
+## Features
+- Medication scheduling and reminder notifications
+- Drug interaction checks using RxNorm data
+- OCR-based medication entry from images
+- Voice commands using Speech-to-Text
+- Text-to-Speech for alerts and guidance
+- Accessible UI supporting screen readers and large text
 
-A few resources to get you started if this is your first Flutter project:
+## Technology Stack
+- Flutter (Dart)
+- RxNorm API
+- Google ML Kit (OCR)
+- Speech-to-Text & Text-to-Speech
+- Local Notifications
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+## Project Structure
+- `lib/` – Application source code
+- `android/`, `ios/` – Platform-specific files
+- `test/` – Unit and widget tests
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## How to Run
+1. Clone the repository
+2. Run `flutter pub get`
+3. Connect a device or start an emulator
+4. Run `flutter run`
+
+## Project Status
+In development
