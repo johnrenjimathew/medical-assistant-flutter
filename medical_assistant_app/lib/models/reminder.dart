@@ -17,8 +17,7 @@ class Reminder {
     required this.scheduledDate,
   });
 
-  /// Convert Reminder to Map for database storage
-  /// Note: SQLite doesn't support boolean, so we store as INTEGER (0 or 1)
+
   Map<String, dynamic> toMap() {
     return {
       'id': id,
@@ -26,13 +25,11 @@ class Reminder {
       'medicineName': medicineName,
       'time': time.toIso8601String(),
       'dosage': dosage,
-      'isTaken': isTaken ? 1 : 0,  // Convert bool to int for SQLite
+      'isTaken': isTaken ? 1 : 0,  
       'scheduledDate': scheduledDate.toIso8601String(),
     };
   }
 
-  /// ✅ FIX: Convert Map from database to Reminder object
-  /// Handles the int → bool conversion for isTaken field
   factory Reminder.fromMap(Map<String, dynamic> map) {
     return Reminder(
       id: map['id'] as String,
@@ -40,14 +37,11 @@ class Reminder {
       medicineName: map['medicineName'] as String,
       time: DateTime.parse(map['time'] as String),
       dosage: map['dosage'] as String,
-      // ✅ FIX: Convert INTEGER (0 or 1) from database to BOOLEAN
       isTaken: _convertToBool(map['isTaken']),
       scheduledDate: DateTime.parse(map['scheduledDate'] as String),
     );
   }
 
-  /// ✅ NEW: Helper method to safely convert database values to boolean
-  /// Handles both int and bool types for backward compatibility
   static bool _convertToBool(dynamic value) {
     if (value == null) return false;
     
@@ -66,7 +60,7 @@ class Reminder {
     return false;
   }
 
-  /// ✅ NEW: Create a copy of this Reminder with updated fields
+
   Reminder copyWith({
     String? id,
     String? medicineId,
@@ -87,17 +81,13 @@ class Reminder {
     );
   }
 
-  /// ✅ NEW: Helper to mark reminder as taken
   void markAsTaken() {
     isTaken = true;
   }
-
-  /// ✅ NEW: Helper to mark reminder as missed
   void markAsMissed() {
     isTaken = false;
   }
 
-  /// ✅ NEW: Check if this reminder is for today
   bool isToday() {
     final now = DateTime.now();
     return scheduledDate.year == now.year &&
@@ -105,19 +95,16 @@ class Reminder {
            scheduledDate.day == now.day;
   }
 
-  /// ✅ NEW: Check if this reminder is in the past
   bool isPast() {
     return scheduledDate.isBefore(DateTime.now());
   }
 
-  /// ✅ NEW: Get a human-readable status
   String getStatus() {
     if (isTaken) return 'Taken';
     if (isPast()) return 'Missed';
     return 'Pending';
   }
 
-  /// ✅ NEW: String representation for debugging
   @override
   String toString() {
     return 'Reminder('
@@ -130,7 +117,6 @@ class Reminder {
         ')';
   }
 
-  /// ✅ NEW: Equality comparison
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
@@ -145,7 +131,6 @@ class Reminder {
         other.scheduledDate == scheduledDate;
   }
 
-  /// ✅ NEW: Hash code for use in collections
   @override
   int get hashCode {
     return id.hashCode ^

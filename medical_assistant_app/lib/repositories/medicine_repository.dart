@@ -9,7 +9,6 @@ class MedicineRepository {
   final DatabaseService _dbService = DatabaseService();
   final NotificationService _notificationService = NotificationService();
   
-  // ✅ Counter to ensure unique notification IDs
   int _notificationCounter = 0;
 
   /* -------------------- INSERT -------------------- */
@@ -22,11 +21,8 @@ class MedicineRepository {
       medicine.toMap(),
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
-
-    // Reset counter at start of operation
     _notificationCounter = 0;
 
-    // ✅ NEW: Schedule ALL recurring notifications
     await _scheduleAllRecurringNotifications(medicine);
   }
 
@@ -199,10 +195,8 @@ class MedicineRepository {
   }) async {
     final db = await _dbService.database;
 
-    // 1. Cancel old notifications using stored IDs
     await _cancelNotificationsForMedicine(oldMedicine.id);
 
-    // 2. Update medicine table
     await db.update(
       'medicines',
       updatedMedicine.toMap(),
@@ -210,17 +204,14 @@ class MedicineRepository {
       whereArgs: [updatedMedicine.id],
     );
 
-    // 3. Remove old reminder times
     await db.delete(
       'reminder_times',
       where: 'medicineId = ?',
       whereArgs: [updatedMedicine.id],
     );
 
-    // 4. Reset counter for new scheduling
     _notificationCounter = 0;
 
-    // 5. ✅ Schedule ALL new recurring notifications
     await _scheduleAllRecurringNotifications(updatedMedicine);
   }
 
@@ -229,10 +220,8 @@ class MedicineRepository {
   Future<void> deleteMedicine(Medicine medicine) async {
     final db = await _dbService.database;
 
-    // 1. Cancel notifications using stored IDs
     await _cancelNotificationsForMedicine(medicine.id);
 
-    // 2. Delete from DB
     await db.delete(
       'reminder_times',
       where: 'medicineId = ?',
@@ -246,9 +235,8 @@ class MedicineRepository {
     );
   }
 
-  /* -------------------- NOTIFICATION SCHEDULING (CORE FIX) -------------------- */
+  /* -------------------- NOTIFICATION SCHEDULING  -------------------- */
 
-  /// ✅ NEW: Master method to schedule ALL recurring notifications for a medicine
   Future<void> _scheduleAllRecurringNotifications(Medicine medicine) async {
     final db = await _dbService.database;
     
@@ -267,7 +255,6 @@ class MedicineRepository {
       // Loop through each reminder time for that day
       for (final time in medicine.reminderTimes) {
         
-        // ✅ Schedule ALL occurrences for this day/time combination
         final scheduledCount = await _scheduleRecurringNotificationsForDayTime(
           medicine: medicine,
           dayOfWeek: day,
@@ -280,12 +267,11 @@ class MedicineRepository {
     }
 
     debugPrint('');
-    debugPrint('✅ TOTAL NOTIFICATIONS SCHEDULED: $totalScheduled');
-    debugPrint('🔔 ========================================');
+    debugPrint(' TOTAL NOTIFICATIONS SCHEDULED: $totalScheduled');
+    debugPrint(' ========================================');
     debugPrint('');
   }
 
-  /// ✅ NEW: Schedule all occurrences of a specific day/time throughout the medicine period
   Future<int> _scheduleRecurringNotificationsForDayTime({
     required Medicine medicine,
     required String dayOfWeek,
@@ -300,12 +286,10 @@ class MedicineRepository {
         ? medicine.startDate 
         : now;
     
-    // Normalize to midnight for clean day iteration
     currentDate = DateTime(currentDate.year, currentDate.month, currentDate.day);
     
     int occurrenceCount = 0;
     
-    // ✅ CORE FIX: Loop through EVERY day from start to end
     while (currentDate.isBefore(medicine.endDate) || 
            currentDate.isAtSameMomentAs(DateTime(
              medicine.endDate.year, 
@@ -313,10 +297,8 @@ class MedicineRepository {
              medicine.endDate.day
            ))) {
       
-      // Check if this day matches our target weekday
       if (currentDate.weekday == targetWeekday) {
         
-        // Create the exact notification time for this date
         DateTime scheduledTime = DateTime(
           currentDate.year,
           currentDate.month,
@@ -325,7 +307,6 @@ class MedicineRepository {
           timeInMinutes % 60,
         );
         
-        // Only schedule if it's in the future
         if (scheduledTime.isAfter(now)) {
           final int notificationId = await _generateUniqueNotificationId(
             db: db,
@@ -335,7 +316,6 @@ class MedicineRepository {
             scheduledTime: scheduledTime,
           );
           
-          // Store in database
           await db.insert('reminder_times', {
             'medicineId': medicine.id,
             'time': timeInMinutes,
@@ -343,7 +323,6 @@ class MedicineRepository {
             'notificationId': notificationId,
           });
           
-          // Schedule the notification
           final timeString = _formatTime(timeInMinutes);
           final payload = '${medicine.id}|${medicine.name}|${medicine.dosage}|$timeString';
           

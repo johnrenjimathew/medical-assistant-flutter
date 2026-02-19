@@ -14,13 +14,11 @@ class NotificationService {
   late FlutterLocalNotificationsPlugin _notificationsPlugin;
 
   Future<void> init() async {
-    print('🔔 [NotificationService] Initializing...');
+    debugPrint('[NotificationService] Initializing...');
     _notificationsPlugin = FlutterLocalNotificationsPlugin();
     
-    // 1. Initialize Timezone Database
     tzdata.initializeTimeZones();
     
-    // 2. Configure device timezone safely
     try {
       final dynamic rawResult = await FlutterTimezone.getLocalTimezone();
       String timeZoneName = rawResult.toString().trim();
@@ -31,14 +29,13 @@ class NotificationService {
       }
 
       tz.setLocalLocation(tz.getLocation(timeZoneName));
-      print('✅ Timezone successfully set to: $timeZoneName');
+      debugPrint('Timezone successfully set to: $timeZoneName');
     } catch (e) {
-      print('🔴 Error setting timezone: $e');
-      print('⚠️ Fallback to UTC');
+      debugPrint('Error setting timezone: $e');
+      debugPrint('Fallback to UTC');
       tz.setLocalLocation(tz.getLocation('UTC'));
     }
 
-    // 3. Android Setup
     const AndroidInitializationSettings androidSettings =
         AndroidInitializationSettings('app_icon');
     
@@ -48,7 +45,7 @@ class NotificationService {
     await _notificationsPlugin.initialize(
       initializationSettings,
       onDidReceiveNotificationResponse: (NotificationResponse response) {
-        print('🔔 Notification Tapped! Payload: ${response.payload}');
+        debugPrint('Notification Tapped! Payload: ${response.payload}');
         if (response.payload != null && response.payload!.isNotEmpty) {
           final parts = response.payload!.split('|');
           if (parts.length >= 4) {
@@ -67,7 +64,6 @@ class NotificationService {
       },
     );
     
-    // 4. Request Permissions
     await _notificationsPlugin
       .resolvePlatformSpecificImplementation<
           AndroidFlutterLocalNotificationsPlugin>()
@@ -75,7 +71,7 @@ class NotificationService {
   }
 
   Future<void> requestExactAlarmPermission() async {
-    print('🔔 [NotificationService] Requesting Exact Alarm Permission...');
+    debugPrint('[NotificationService] Requesting Exact Alarm Permission...');
     final AndroidFlutterLocalNotificationsPlugin? androidImplementation =
         _notificationsPlugin.resolvePlatformSpecificImplementation<
             AndroidFlutterLocalNotificationsPlugin>();
@@ -92,8 +88,7 @@ class NotificationService {
     required DateTime scheduledTime,
     required String payload,
   }) async {
-    // 1. Force conversion to the Phone's Local Timezone
-    // This fixes the "Silent Failure" where the phone thinks the time is UTC
+
     final tz.TZDateTime tzScheduledTime = tz.TZDateTime.from(
       scheduledTime,
       tz.local,
@@ -103,14 +98,13 @@ class NotificationService {
     print('   Raw Time: $scheduledTime');
     print('   Converted TZ Time: $tzScheduledTime');
 
-    // 2. Define the Details (Using the safe icon)
     const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
       'medicine_channel_final_wake',      
       'Medicine Alerts',
       channelDescription: 'High priority alerts',
       importance: Importance.max,
       priority: Priority.high,
-      icon: '@mipmap/ic_launcher', // SAFE ICON
+      icon: '@mipmap/ic_launcher',
       
       // CRITICAL FLAGS FOR SCHEDULING:
       playSound: true,
@@ -125,7 +119,6 @@ class NotificationService {
       android: androidDetails,
     );
 
-    // 3. Schedule it using absolute time
     await _notificationsPlugin.zonedSchedule(
       id,
       title,
@@ -133,22 +126,20 @@ class NotificationService {
       tzScheduledTime,
       platformChannelSpecifics,
       
-      // IMPORTANT: This flag ensures it works even if the emulator is "dozing"
       androidScheduleMode: AndroidScheduleMode.alarmClock, 
       
-      // IMPORTANT: Interpretation of the time
       uiLocalNotificationDateInterpretation:
           UILocalNotificationDateInterpretation.absoluteTime,
           
       payload: payload,
     );
 
-    print('✅ Successfully passed to Android Alarm Manager');
+    print('Successfully passed to Android Alarm Manager');
   }
 
   Future<void> cancelNotification(int id) async {
     await _notificationsPlugin.cancel(id);
-    print('🔔 [NotificationService] Cancelled notification ID: $id');
+    print('[NotificationService] Cancelled notification ID: $id');
   }
 
   Future<void> cancelAllNotifications() async {

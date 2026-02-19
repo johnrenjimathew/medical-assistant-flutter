@@ -211,7 +211,7 @@ class _HomeScreenState extends State<HomeScreen> {
              ),
              const SizedBox(height: 20),
              SizedBox(
-                width: double.infinity, // Makes the button take full width
+                width: double.infinity, 
                 child: ElevatedButton.icon(
                   onPressed: () async {
                     await Navigator.push(
@@ -223,25 +223,25 @@ class _HomeScreenState extends State<HomeScreen> {
                     _loadMedicines();
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue, // The blue box color
-                    foregroundColor: Colors.white, // Text/Icon color
-                    padding: const EdgeInsets.symmetric(vertical: 16), // Makes it tall
+                    backgroundColor: Colors.blue, 
+                    foregroundColor: Colors.white, 
+                    padding: const EdgeInsets.symmetric(vertical: 16), 
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12), // Rounded corners
+                      borderRadius: BorderRadius.circular(12), 
                     ),
-                    elevation: 2, // Slight shadow
+                    elevation: 2, 
                   ),
                   icon: const Icon(Icons.add, size: 28),
                   label: const Text(
                     'Add New Medicine',
                     style: TextStyle(
-                      fontSize: 18, // Readable size
+                      fontSize: 18, 
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                 ),
               ),
-              const SizedBox(height: 20), // Bottom spacing
+              const SizedBox(height: 20), 
            ],
          ),
        ),

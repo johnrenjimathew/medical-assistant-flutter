@@ -2,12 +2,12 @@ class Medicine {
   final String id;
   final String name;
   final String dosage;
-  final String type; // Tablet, Syrup, etc.
+  final String type; 
   final String? notes;
   final DateTime startDate;
   final DateTime endDate;
-  final List<int> reminderTimes; // Stored in reminder_times table
-  final List<String> daysOfWeek; // Stored in reminder_times table
+  final List<int> reminderTimes; 
+  final List<String> daysOfWeek; 
 
   Medicine({
     required this.id,
@@ -21,9 +21,6 @@ class Medicine {
     required this.daysOfWeek,
   });
   
-
-  /// Map used ONLY for medicines table
-  /// Lists are NOT stored in SQLite directly
   Map<String, dynamic> toMap() {
     return {
       'id': id,
@@ -36,8 +33,6 @@ class Medicine {
     };
   }
 
-  /// reminderTimes and daysOfWeek
-  /// are loaded separately from reminder_times table
   factory Medicine.fromMap(Map<String, dynamic> map) {
     return Medicine(
       id: map['id'],

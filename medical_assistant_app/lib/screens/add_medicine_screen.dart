@@ -287,7 +287,6 @@ void initState() {
                   onPressed: () async {
                     final result = await _sttService.speechToText();
                     if (result != null && result.isNotEmpty) {
-                      // Simple parsing - in real app, use more sophisticated NLP
                       _nameController.text = result;
                     } else {
                       if (!context.mounted) return;
@@ -352,7 +351,6 @@ void initState() {
                 ),
                 const SizedBox(height: 20),
                 
-                // Dates Row
                 Row(
                   children: [
                     Expanded(

@@ -17,7 +17,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
   bool _isLoading = true;
 
   @override
-  void initState() {  // ✅ FIXED: Was 'init State' (space removed)
+  void initState() {  
     super.initState();
     _loadHistory();
   }
@@ -37,10 +37,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
         _isLoading = false;
       });
 
-      // ✅ FIXED: Removed print for production (use debugPrint if needed)
-      debugPrint('📊 Loaded ${data.length} reminder history records');
+      debugPrint('Loaded ${data.length} reminder history records');
     } catch (e) {
-      debugPrint('❌ Error loading history: $e');
+      debugPrint('Error loading history: $e');
       
       if (!mounted) return;
       
@@ -50,7 +49,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
     }
   }
 
-  // ✅ Filter reminders by selected date
+  // Filter reminders by selected date
   List<Reminder> _getRemindersForDate(DateTime date) {
     return _reminderHistory.where((reminder) {
       return reminder.scheduledDate.year == date.year &&
@@ -60,21 +59,21 @@ class _HistoryScreenState extends State<HistoryScreen> {
       ..sort((a, b) => b.time.compareTo(a.time)); // Most recent first
   }
 
-  // ✅ Navigate to previous day
+  // Navigate to previous day
   void _previousDay() {
     setState(() {
       _selectedDate = _selectedDate.subtract(const Duration(days: 1));
     });
   }
 
-  // ✅ Navigate to next day
+  // Navigate to next day
   void _nextDay() {
     setState(() {
       _selectedDate = _selectedDate.add(const Duration(days: 1));
     });
   }
 
-  // ✅ Jump to today
+  // Jump to today
   void _goToToday() {
     setState(() {
       _selectedDate = DateTime.now();
@@ -159,7 +158,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     ),
                   ),
 
-                  // ✅ Summary Stats
+                  // Summary Stats
                   if (todaysReminders.isNotEmpty)
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16.0),
@@ -220,7 +219,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
                   const SizedBox(height: 16),
 
-                  // ✅ Reminder List
+                  // Reminder List
                   Expanded(
                     child: todaysReminders.isEmpty
                         ? Center(
@@ -262,7 +261,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
     );
   }
 
-  // ✅ Build individual reminder card
+  // Build individual reminder card
   Widget _buildReminderCard(Reminder reminder) {
     final isTaken = reminder.isTaken;
     final cardColor = isTaken ? Colors.green[50] : Colors.red[50];

@@ -41,17 +41,15 @@ class MedicineCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              /// ✅ FIXED: Better title row with flexible layout
               Row(
                 children: [
-                  // Medicine name - takes available space, allows wrapping
                   Expanded(
                     child: Tooltip(
-                      message: medicine.name, // Shows full name on long press
+                      message: medicine.name, 
                       child: Text(
                         medicine.name,
                         style: Theme.of(context).textTheme.displayMedium?.copyWith(
-                          fontSize: 26, // Reduced from 32 to 26
+                          fontSize: 26, 
                         ),
                         maxLines: 2, // Allow 2 lines for longer names
                         overflow: TextOverflow.ellipsis,
@@ -61,13 +59,12 @@ class MedicineCard extends StatelessWidget {
                   
                   const SizedBox(width: 8),
                   
-                  // Type chip - fixed size
                   Chip(
                     label: Text(
                       medicine.type,
                       style: const TextStyle(
                         color: Colors.white,
-                        fontSize: 14, // Slightly smaller
+                        fontSize: 14, 
                       ),
                     ),
                     backgroundColor: Colors.blue,
@@ -90,7 +87,7 @@ class MedicineCard extends StatelessWidget {
               Text(
                 'Dosage: ${medicine.dosage}',
                 style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  fontSize: 20, // Reduced from 24 to 20
+                  fontSize: 20, 
                 ),
               ),
 
@@ -107,12 +104,11 @@ class MedicineCard extends StatelessWidget {
                 const SizedBox(height: 8),
               ],
 
-              /// ✅ FIXED: Days shown as individual chips instead of long text
               Text(
                 'Schedule:',
                 style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                   fontWeight: FontWeight.w600,
-                  fontSize: 20, // Reduced from 24 to 20
+                  fontSize: 20, 
                 ),
               ),
               const SizedBox(height: 6),
@@ -136,7 +132,7 @@ class MedicineCard extends StatelessWidget {
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         color: Colors.blue[900],
                         fontWeight: FontWeight.w600,
-                        fontSize: 16, // Readable but not huge
+                        fontSize: 16, 
                       ),
                     ),
                   );
@@ -144,13 +140,11 @@ class MedicineCard extends StatelessWidget {
               ),
 
               const SizedBox(height: 12),
-
-              // Times
               Text(
                 'Reminder Times:',
                 style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                   fontWeight: FontWeight.w600,
-                  fontSize: 20, // Reduced from 24 to 20
+                  fontSize: 20, 
                 ),
               ),
               const SizedBox(height: 6),
@@ -164,7 +158,7 @@ class MedicineCard extends StatelessWidget {
                     label: Text(
                       _formatTime(time),
                       style: const TextStyle(
-                        fontSize: 16, // Readable but compact
+                        fontSize: 16, 
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -176,7 +170,6 @@ class MedicineCard extends StatelessWidget {
 
               const SizedBox(height: 12),
 
-              /// ✅ FIXED: Date range with line break if needed
               Text(
                 'Duration:',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
@@ -189,7 +182,7 @@ class MedicineCard extends StatelessWidget {
                 '${DateFormat('MMM d, yyyy').format(medicine.startDate)} - ${DateFormat('MMM d, yyyy').format(medicine.endDate)}',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color: Colors.grey[700],
-                  fontSize: 16, // Slightly smaller for dates
+                  fontSize: 16, 
                 ),
                 maxLines: 2,
               ),

@@ -234,17 +234,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           style: Theme.of(context).textTheme.bodyMedium,
                         ),
                       ),
-                      ListTile(
-                        leading: const Icon(Icons.accessibility),
-                        title: Text(
-                          'Accessibility Features',
-                          style: Theme.of(context).textTheme.bodyLarge,
-                        ),
-                        subtitle: Text(
-                          'Designed for older adults',
-                          style: Theme.of(context).textTheme.bodyMedium,
-                        ),
-                      ),
+                      
                     ],
                   ),
                 ),

@@ -8,14 +8,14 @@ import 'package:medicine_reminder/services/tts_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ReminderAlertScreen extends StatelessWidget {
-  final String medicineId; // <--- NEW FIELD
+  final String medicineId; 
   final String medicineName;
   final String dosage;
   final String time;
 
   const ReminderAlertScreen({
     super.key,
-    required this.medicineId, // <--- NEW REQUIRED PARAMETER
+    required this.medicineId, 
     required this.medicineName,
     required this.dosage,
     required this.time,
