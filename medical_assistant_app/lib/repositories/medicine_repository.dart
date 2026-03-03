@@ -73,44 +73,11 @@ class MedicineRepository {
   }
 
   Future<List<Medicine>> getAllMedicinesWithReminders() async {
-    final db = await _dbService.database;
-
-    final medicineMaps = await db.query('medicines');
-    final List<Medicine> medicines = [];
-
-    for (final map in medicineMaps) {
-      final medicineId = map['id'] as String;
-
-      final reminderRows = await db.query(
-        'reminder_times',
-        where: 'medicineId = ?',
-        whereArgs: [medicineId],
-      );
-
-      final reminderTimes = reminderRows
-          .map((r) => r['time'] as int)
-          .toSet()
-          .toList()
-        ..sort();
-
-      final daysOfWeek = reminderRows
-          .map((r) => r['day'] as String)
-          .toSet()
-          .toList();
-
-      medicines.add(
-        Medicine.fromMap(map).copyWith(
-          reminderTimes: reminderTimes,
-          daysOfWeek: daysOfWeek,
-        ),
-      );
-    }
-
-    return medicines;
+    return getAllMedicines();
   }
 
   Future<List<Medicine>> getActiveMedicines() async {
-    final allMedicines = await getAllMedicinesWithReminders();
+    final allMedicines = await getAllMedicines();
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
 
@@ -241,12 +208,12 @@ class MedicineRepository {
     final db = await _dbService.database;
     
     debugPrint('');
-    debugPrint('🔔 ========================================');
-    debugPrint('🔔 Scheduling ALL notifications for: ${medicine.name}');
-    debugPrint('🔔 Period: ${DateFormat('MMM d').format(medicine.startDate)} - ${DateFormat('MMM d, yyyy').format(medicine.endDate)}');
-    debugPrint('🔔 Days: ${medicine.daysOfWeek.join(', ')}');
-    debugPrint('🔔 Times per day: ${medicine.reminderTimes.length}');
-    debugPrint('🔔 ========================================');
+    debugPrint('[Notifications] ========================================');
+    debugPrint('[Notifications] Scheduling ALL notifications for: ${medicine.name}');
+    debugPrint('[Notifications] Period: ${DateFormat('MMM d').format(medicine.startDate)} - ${DateFormat('MMM d, yyyy').format(medicine.endDate)}');
+    debugPrint('[Notifications] Days: ${medicine.daysOfWeek.join(', ')}');
+    debugPrint('[Notifications] Times per day: ${medicine.reminderTimes.length}');
+    debugPrint('[Notifications] ========================================');
 
     int totalScheduled = 0;
 
@@ -336,10 +303,10 @@ class MedicineRepository {
             );
             
             occurrenceCount++;
-            debugPrint('  ✅ #$occurrenceCount: ${DateFormat('MMM d, yyyy').format(scheduledTime)} at $timeString (ID: $notificationId)');
+            debugPrint('  [OK] #$occurrenceCount: ${DateFormat('MMM d, yyyy').format(scheduledTime)} at $timeString (ID: $notificationId)');
             
           } catch (e) {
-            debugPrint('  ❌ Failed to schedule: $e');
+            debugPrint('  [Error] Failed to schedule: $e');
           }
         }
       }
@@ -349,7 +316,7 @@ class MedicineRepository {
     }
     
     if (occurrenceCount > 0) {
-      debugPrint('📊 Scheduled $occurrenceCount notifications for $dayOfWeek at ${_formatTime(timeInMinutes)}');
+      debugPrint('[Summary] Scheduled $occurrenceCount notifications for $dayOfWeek at ${_formatTime(timeInMinutes)}');
     }
     
     return occurrenceCount;
@@ -395,7 +362,7 @@ class MedicineRepository {
       whereArgs: [medicineId],
     );
 
-    debugPrint('🗑️ Cancelling ${rows.length} notifications for medicine $medicineId');
+    debugPrint('[Cleanup] Cancelling ${rows.length} notifications for medicine $medicineId');
 
     for (final row in rows) {
       final int? id = row['notificationId'] as int?;
@@ -470,3 +437,4 @@ class MedicineRepository {
     );
   }
 }
+

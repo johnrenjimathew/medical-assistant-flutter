@@ -1,1 +1,5 @@
-{}
+{
+    "java.import.exclusions": [
+        "**/android/**"
+    ]
+}

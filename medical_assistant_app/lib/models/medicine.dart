@@ -2,12 +2,12 @@ class Medicine {
   final String id;
   final String name;
   final String dosage;
-  final String type; 
+  final String type;
   final String? notes;
   final DateTime startDate;
   final DateTime endDate;
-  final List<int> reminderTimes; 
-  final List<String> daysOfWeek; 
+  final List<int> reminderTimes;
+  final List<String> daysOfWeek;
 
   Medicine({
     required this.id,
@@ -20,7 +20,7 @@ class Medicine {
     required this.reminderTimes,
     required this.daysOfWeek,
   });
-  
+
   Map<String, dynamic> toMap() {
     return {
       'id': id,
@@ -34,6 +34,15 @@ class Medicine {
   }
 
   factory Medicine.fromMap(Map<String, dynamic> map) {
+    final reminderTimes = (map['reminderTimes'] as List<dynamic>?)
+            ?.map((value) => value as int)
+            .toList() ??
+        [];
+    final daysOfWeek = (map['daysOfWeek'] as List<dynamic>?)
+            ?.map((value) => value as String)
+            .toList() ??
+        [];
+
     return Medicine(
       id: map['id'],
       name: map['name'],
@@ -42,34 +51,34 @@ class Medicine {
       notes: map['notes'],
       startDate: DateTime.parse(map['startDate']),
       endDate: DateTime.parse(map['endDate']),
-      reminderTimes: [],
-      daysOfWeek: [],
+      reminderTimes: reminderTimes,
+      daysOfWeek: daysOfWeek,
     );
   }
-  Medicine copyWith({
-  String? id,
-  String? name,
-  String? dosage,
-  String? type,
-  String? notes,
-  DateTime? startDate,
-  DateTime? endDate,
-  List<int>? reminderTimes,
-  List<String>? daysOfWeek,
-}) {
-  return Medicine(
-    id: id ?? this.id,
-    name: name ?? this.name,
-    dosage: dosage ?? this.dosage,
-    type: type ?? this.type,
-    notes: notes ?? this.notes,
-    startDate: startDate ?? this.startDate,
-    endDate: endDate ?? this.endDate,
-    reminderTimes: reminderTimes ?? this.reminderTimes,
-    daysOfWeek: daysOfWeek ?? this.daysOfWeek,
-  );
-}
 
+  Medicine copyWith({
+    String? id,
+    String? name,
+    String? dosage,
+    String? type,
+    String? notes,
+    DateTime? startDate,
+    DateTime? endDate,
+    List<int>? reminderTimes,
+    List<String>? daysOfWeek,
+  }) {
+    return Medicine(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      dosage: dosage ?? this.dosage,
+      type: type ?? this.type,
+      notes: notes ?? this.notes,
+      startDate: startDate ?? this.startDate,
+      endDate: endDate ?? this.endDate,
+      reminderTimes: reminderTimes ?? this.reminderTimes,
+      daysOfWeek: daysOfWeek ?? this.daysOfWeek,
+    );
+  }
 }
 
 /// Simple interaction database (academic purpose)
@@ -82,8 +91,25 @@ class MedicineInteraction {
     'Paracetamol': ['Alcohol'],
   };
 
-  static List<String> checkInteractions(String medicineName) {
-    return interactions[medicineName] ?? [];
+  static String _normalizeMedicineName(String medicineName) {
+    return medicineName.trim().toLowerCase();
   }
 
+  static List<String> checkInteractions(String medicineName) {
+    final normalizedName = _normalizeMedicineName(medicineName);
+
+    for (final entry in interactions.entries) {
+      final normalizedKey = _normalizeMedicineName(entry.key);
+      if (normalizedKey == normalizedName) {
+        return entry.value;
+      }
+
+      final keyPattern = RegExp(r'\b' + RegExp.escape(normalizedKey) + r'\b');
+      if (keyPattern.hasMatch(normalizedName)) {
+        return entry.value;
+      }
+    }
+
+    return [];
+  }
 }

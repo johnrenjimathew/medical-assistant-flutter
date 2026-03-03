@@ -16,6 +16,9 @@ void main() async {
   await SttService().init();
   
   runApp(const MedicineReminderApp());
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    NotificationService().flushPendingLaunchPayload();
+  });
 }
 
 class MedicineReminderApp extends StatelessWidget {

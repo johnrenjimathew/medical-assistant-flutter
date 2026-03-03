@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:medicine_reminder/models/medicine.dart';
 import 'package:medicine_reminder/widgets/large_button.dart';
+import 'package:medicine_reminder/widgets/times_per_day_picker.dart';
 import 'package:medicine_reminder/screens/interaction_warning_screen.dart';
 import 'package:medicine_reminder/repositories/medicine_repository.dart';
 import 'package:medicine_reminder/services/stt_service.dart';
@@ -37,7 +38,9 @@ void initState() {
     _selectedType = m.type;
     _startDate = m.startDate;
     _endDate = m.endDate;
-    _selectedTimes = List.from(m.reminderTimes);
+    _selectedTimes = m.reminderTimes
+        .map(_minutesToTimeOfDay)
+        .toList();
 
     _selectedDays = _daysOfWeek
         .map((day) => m.daysOfWeek.contains(day))
@@ -45,6 +48,7 @@ void initState() {
   } else {
     _isEditMode = false;
     _medicineId = DateTime.now().millisecondsSinceEpoch.toString();
+    _selectedTimes = const [TimeOfDay(hour: 8, minute: 0)];
   }
 }
 
@@ -59,7 +63,7 @@ void initState() {
   String _selectedType = 'Tablet';
   DateTime _startDate = DateTime.now();
   DateTime _endDate = DateTime.now().add(const Duration(days: 30));
-  List<int> _selectedTimes = [];
+  List<TimeOfDay> _selectedTimes = [];
   final List<String> _daysOfWeek = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
   List<bool> _selectedDays = List.filled(7, true);
   
@@ -80,36 +84,6 @@ void initState() {
     _dosageController.dispose();
     _notesController.dispose();
     super.dispose();
-  }
-
-  Future<void> _selectTime() async {
-    final TimeOfDay? picked = await showTimePicker(
-      context: context,
-      initialTime: TimeOfDay.now(),
-      builder: (context, child) {
-        return MediaQuery(
-          data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: false),
-          child: child!,
-        );
-      },
-    );
-    
-    if (picked != null) {
-      final selectedMinutes = picked.hour * 60 + picked.minute;
-      if (_selectedTimes.contains(selectedMinutes)) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('That reminder time is already added'),
-          ),
-        );
-        return;
-      }
-      setState(() {
-        _selectedTimes.add(selectedMinutes);
-        _selectedTimes.sort();
-      });
-    }
   }
 
   Future<void> _selectDate(bool isStartDate) async {
@@ -174,6 +148,9 @@ void initState() {
         ? _medicineId
         : DateTime.now().millisecondsSinceEpoch.toString();
 
+    final sortedSelectedTimes = List<TimeOfDay>.from(_selectedTimes)
+      ..sort(_compareTimeOfDay);
+
     final medicine = Medicine(
       id: medicineId,
       name: _nameController.text,
@@ -182,7 +159,7 @@ void initState() {
       notes: _notesController.text.isEmpty ? null : _notesController.text,
       startDate: _startDate,
       endDate: _endDate,
-      reminderTimes: _selectedTimes,
+      reminderTimes: sortedSelectedTimes.map(_timeOfDayToMinutes).toList(),
       daysOfWeek: _daysOfWeek
           .asMap()
           .entries
@@ -241,6 +218,19 @@ void initState() {
     Navigator.pop(context);
   }
 }
+
+  static int _timeOfDayToMinutes(TimeOfDay time) => time.hour * 60 + time.minute;
+
+  static TimeOfDay _minutesToTimeOfDay(int minutes) => TimeOfDay(
+        hour: minutes ~/ 60,
+        minute: minutes % 60,
+      );
+
+  static int _compareTimeOfDay(TimeOfDay a, TimeOfDay b) {
+    final aMinutes = _timeOfDayToMinutes(a);
+    final bMinutes = _timeOfDayToMinutes(b);
+    return aMinutes.compareTo(bMinutes);
+  }
 
 
   @override
@@ -451,38 +441,14 @@ void initState() {
                 const SizedBox(height: 20),
                 
                 // Reminder Times
-                Text(
-                  'Reminder Times',
-                  style: Theme.of(context).textTheme.bodyLarge,
+                TimesPerDayPicker(
+                  initialTimes: _selectedTimes,
+                  onChanged: (times) {
+                    setState(() {
+                      _selectedTimes = times;
+                    });
+                  },
                 ),
-                const SizedBox(height: 8),
-                LargeButton(
-                  text: 'Add Reminder Time',
-                  icon: Icons.access_time,
-                  onPressed: _selectTime,
-                ),
-                const SizedBox(height: 10),
-                ..._selectedTimes.map((time) {
-                  final hour = time ~/ 60;
-                  final minute = time % 60;
-                  final period = hour >= 12 ? 'PM' : 'AM';
-                  final displayHour = hour % 12 == 0 ? 12 : hour % 12;
-                  return ListTile(
-                    leading: const Icon(Icons.schedule),
-                    title: Text(
-                      '$displayHour:${minute.toString().padLeft(2, '0')} $period',
-                      style: Theme.of(context).textTheme.bodyLarge,
-                    ),
-                    trailing: IconButton(
-                      icon: const Icon(Icons.delete),
-                      onPressed: () {
-                        setState(() {
-                          _selectedTimes.remove(time);
-                        });
-                      },
-                    ),
-                  );
-                }).toList(),
                 const SizedBox(height: 20),
                 
                 // Notes

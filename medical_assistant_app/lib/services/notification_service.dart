@@ -12,6 +12,7 @@ class NotificationService {
   NotificationService._internal();
 
   late FlutterLocalNotificationsPlugin _notificationsPlugin;
+  String? _pendingLaunchPayload;
 
   Future<void> init() async {
     debugPrint('[NotificationService] Initializing...');
@@ -46,28 +47,56 @@ class NotificationService {
       initializationSettings,
       onDidReceiveNotificationResponse: (NotificationResponse response) {
         debugPrint('Notification Tapped! Payload: ${response.payload}');
-        if (response.payload != null && response.payload!.isNotEmpty) {
-          final parts = response.payload!.split('|');
-          if (parts.length >= 4) {
-            navigatorKey.currentState?.push(
-              MaterialPageRoute(
-                builder: (_) => ReminderAlertScreen(
-                  medicineId: parts[0],
-                  medicineName: parts[1],
-                  dosage: parts[2],
-                  time: parts[3],
-                ),
-              ),
-            );
-          }
-        }
+        _handleNotificationPayload(response.payload);
       },
     );
+
+    final NotificationAppLaunchDetails? launchDetails =
+        await _notificationsPlugin.getNotificationAppLaunchDetails();
+    if (launchDetails?.didNotificationLaunchApp ?? false) {
+      _handleNotificationPayload(launchDetails?.notificationResponse?.payload);
+    }
     
     await _notificationsPlugin
       .resolvePlatformSpecificImplementation<
           AndroidFlutterLocalNotificationsPlugin>()
       ?.requestNotificationsPermission();
+  }
+
+  void flushPendingLaunchPayload() {
+    if (_pendingLaunchPayload == null) return;
+    final payload = _pendingLaunchPayload!;
+    _pendingLaunchPayload = null;
+    _handleNotificationPayload(payload);
+  }
+
+  void _handleNotificationPayload(String? payload) {
+    if (payload == null || payload.isEmpty) return;
+
+    final parts = payload.split('|');
+    if (parts.length < 4) return;
+
+    final medicineId = parts.first;
+    final time = parts.last;
+    final dosage = parts[parts.length - 2];
+    final medicineName = parts.sublist(1, parts.length - 2).join('|');
+
+    final navigator = navigatorKey.currentState;
+    if (navigator == null) {
+      _pendingLaunchPayload = payload;
+      return;
+    }
+
+    navigator.push(
+      MaterialPageRoute(
+        builder: (_) => ReminderAlertScreen(
+          medicineId: medicineId,
+          medicineName: medicineName,
+          dosage: dosage,
+          time: time,
+        ),
+      ),
+    );
   }
 
   Future<void> requestExactAlarmPermission() async {
@@ -94,7 +123,7 @@ class NotificationService {
       tz.local,
     );
 
-    print('🔔 Scheduling ID: $id');
+    print(' Scheduling ID: $id');
     print('   Raw Time: $scheduledTime');
     print('   Converted TZ Time: $tzScheduledTime');
 
