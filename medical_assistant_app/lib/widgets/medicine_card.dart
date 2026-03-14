@@ -81,6 +81,35 @@ class MedicineCard extends StatelessWidget {
                 ],
               ),
 
+              const SizedBox(height: 4),
+
+              // Verified / Unverified badge
+              Row(
+                children: [
+                  Icon(
+                    medicine.rxcui != null && medicine.rxcui!.isNotEmpty
+                        ? Icons.verified
+                        : Icons.warning_amber_rounded,
+                    size: 14,
+                    color: medicine.rxcui != null && medicine.rxcui!.isNotEmpty
+                        ? Colors.green
+                        : Colors.orange,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    medicine.rxcui != null && medicine.rxcui!.isNotEmpty
+                        ? 'Verified'
+                        : 'Unverified',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: medicine.rxcui != null && medicine.rxcui!.isNotEmpty
+                          ? Colors.green
+                          : Colors.orange,
+                    ),
+                  ),
+                ],
+              ),
+
               const SizedBox(height: 12),
 
               // Dosage

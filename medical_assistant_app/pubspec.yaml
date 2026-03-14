@@ -17,12 +17,17 @@ dependencies:
   table_calendar: ^3.0.9
   sqflite: ^2.3.2
   path: ^1.9.0
+  http: ^1.2.0
   flutter_timezone: ^5.0.1
+  xml: ^6.6.1
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^3.0.1
+  mockito: ^5.6.3
+  build_runner: ^2.12.2
+  sqflite_common_ffi: ^2.4.0+2
 
 flutter:
   uses-material-design: true

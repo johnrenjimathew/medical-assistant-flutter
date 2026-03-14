@@ -20,8 +20,9 @@ class DatabaseService {
 
     return openDatabase(
       path,
-      version: 1,
+      version: 3,
       onCreate: _onCreate,
+      onUpgrade: _onUpgrade,
     );
   }
 
@@ -34,7 +35,11 @@ class DatabaseService {
         type TEXT,
         notes TEXT,
         startDate TEXT,
-        endDate TEXT
+        endDate TEXT,
+        rxcui TEXT,
+        normalizedName TEXT,
+        ingredientRxcui TEXT,
+        dailymedSetid TEXT
       )
     ''');
     await db.execute('''
@@ -58,17 +63,53 @@ class DatabaseService {
       isTaken INTEGER
       )
     ''');
-
-
     await db.execute('''
-      CREATE TABLE reminders (
-        id TEXT PRIMARY KEY,
-        medicineId TEXT,
-        scheduledDate TEXT,
-        time TEXT,
-        dosage TEXT,
-        isTaken INTEGER
+      CREATE TABLE IF NOT EXISTS drug_info (
+        rxcui TEXT PRIMARY KEY,
+        indications_usage TEXT,
+        dosage_administration TEXT,
+        warnings TEXT,
+        adverse_reactions TEXT,
+        raw_indications_usage TEXT,
+        raw_dosage_administration TEXT,
+        raw_warnings TEXT,
+        raw_adverse_reactions TEXT,
+        last_updated INTEGER
       )
     ''');
+  }
+
+  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      await db.execute('ALTER TABLE medicines ADD COLUMN rxcui TEXT;');
+      await db.execute('ALTER TABLE medicines ADD COLUMN normalizedName TEXT;');
+      await db.execute('ALTER TABLE medicines ADD COLUMN ingredientRxcui TEXT;');
+      await db.execute('ALTER TABLE medicines ADD COLUMN dailymedSetid TEXT;');
+
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS drug_info (
+          rxcui TEXT PRIMARY KEY,
+          indications_usage TEXT,
+          dosage_administration TEXT,
+          warnings TEXT,
+          adverse_reactions TEXT,
+          raw_indications_usage TEXT,
+          raw_dosage_administration TEXT,
+          raw_warnings TEXT,
+          raw_adverse_reactions TEXT,
+          last_updated INTEGER
+        )
+      ''');
+    }
+
+    if (oldVersion >= 2 && oldVersion < 3) {
+      await db.execute(
+          'ALTER TABLE drug_info ADD COLUMN raw_indications_usage TEXT;');
+      await db.execute(
+          'ALTER TABLE drug_info ADD COLUMN raw_dosage_administration TEXT;');
+      await db.execute('ALTER TABLE drug_info ADD COLUMN raw_warnings TEXT;');
+      await db.execute(
+          'ALTER TABLE drug_info ADD COLUMN raw_adverse_reactions TEXT;');
+    }
   }
 }

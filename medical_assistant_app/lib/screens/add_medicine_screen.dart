@@ -1,9 +1,13 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:medicine_reminder/models/medicine.dart';
 import 'package:medicine_reminder/widgets/large_button.dart';
 import 'package:medicine_reminder/widgets/times_per_day_picker.dart';
 import 'package:medicine_reminder/screens/interaction_warning_screen.dart';
 import 'package:medicine_reminder/repositories/medicine_repository.dart';
+import 'package:medicine_reminder/services/dailymed_service.dart';
+import 'package:medicine_reminder/services/interaction_service.dart';
+import 'package:medicine_reminder/services/rxnorm_service.dart';
 import 'package:medicine_reminder/services/stt_service.dart';
 
 import 'package:intl/intl.dart';
@@ -45,20 +49,44 @@ void initState() {
     _selectedDays = _daysOfWeek
         .map((day) => m.daysOfWeek.contains(day))
         .toList();
+    _selectedRxcui = m.rxcui;
+    _selectedNormalizedName = m.normalizedName;
+    _selectedIngredientRxcuis = (m.ingredientRxcui ?? '')
+        .split(',')
+        .map((value) => value.trim())
+        .where((value) => value.isNotEmpty)
+        .toList();
+    _selectedDailymedSetid = m.dailymedSetid;
   } else {
     _isEditMode = false;
     _medicineId = DateTime.now().millisecondsSinceEpoch.toString();
     _selectedTimes = const [TimeOfDay(hour: 8, minute: 0)];
+  }
+
+  if (_selectedRxcui != null &&
+      (_selectedIngredientRxcuis.isEmpty || _selectedDailymedSetid == null)) {
+    _enrichSelectedRxCuiMetadata();
   }
 }
 
 
   final _formKey = GlobalKey<FormState>();
   final SttService _sttService = SttService();
+  final RxNormService _rxNormService = RxNormService();
+  final DailyMedService _dailyMedService = DailyMedService();
   
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _dosageController = TextEditingController();
   final TextEditingController _notesController = TextEditingController();
+
+  // RxNorm search state
+  Timer? _debounceTimer;
+  List<Map<String, String>> _rxNormSuggestions = [];
+  bool _isSearching = false;
+  String? _selectedRxcui;
+  String? _selectedNormalizedName;
+  List<String> _selectedIngredientRxcuis = [];
+  String? _selectedDailymedSetid;
   
   String _selectedType = 'Tablet';
   DateTime _startDate = DateTime.now();
@@ -80,10 +108,66 @@ void initState() {
 
   @override
   void dispose() {
+    _debounceTimer?.cancel();
     _nameController.dispose();
     _dosageController.dispose();
     _notesController.dispose();
+    _rxNormService.dispose();
+    _dailyMedService.dispose();
     super.dispose();
+  }
+
+  void _onNameChanged(String value) {
+    // Clear previous selection when user types a new name
+    _selectedRxcui = null;
+    _selectedNormalizedName = null;
+    _selectedIngredientRxcuis = [];
+    _selectedDailymedSetid = null;
+
+    _debounceTimer?.cancel();
+    if (value.trim().length < 3) {
+      setState(() {
+        _rxNormSuggestions = [];
+        _isSearching = false;
+      });
+      return;
+    }
+    setState(() => _isSearching = true);
+    _debounceTimer = Timer(const Duration(milliseconds: 500), () async {
+      final results = await _rxNormService.searchRxCuiByName(value);
+      if (mounted) {
+        setState(() {
+          _rxNormSuggestions = results;
+          _isSearching = false;
+        });
+      }
+    });
+  }
+
+  void _selectRxNormSuggestion(Map<String, String> suggestion) {
+    setState(() {
+      _selectedRxcui = suggestion['rxcui'];
+      _selectedNormalizedName = suggestion['name'];
+      _nameController.text = suggestion['name'] ?? _nameController.text;
+      _selectedIngredientRxcuis = [];
+      _selectedDailymedSetid = null;
+      _rxNormSuggestions = [];
+    });
+    _enrichSelectedRxCuiMetadata();
+  }
+
+  Future<void> _enrichSelectedRxCuiMetadata() async {
+    final rxcui = _selectedRxcui?.trim();
+    if (rxcui == null || rxcui.isEmpty) return;
+
+    final ingredients = await _rxNormService.getIngredients(rxcui);
+    final setId = await _dailyMedService.getSetIdByRxcui(rxcui);
+    if (!mounted) return;
+
+    setState(() {
+      _selectedIngredientRxcuis = ingredients;
+      _selectedDailymedSetid = setId;
+    });
   }
 
   Future<void> _selectDate(bool isStartDate) async {
@@ -126,24 +210,44 @@ void initState() {
       return;
     }
 
-    // Check for interactions
-    final interactions =
-        MedicineInteraction.checkInteractions(_nameController.text);
+    // Check for interactions using merged RxNorm + local logic
+    final repository = MedicineRepository();
+    final interactionService = InteractionService();
 
-    if (interactions.isNotEmpty) {
+    // Build a temporary Medicine to check against
+    final tempMedicine = Medicine(
+      id: '',
+      name: _nameController.text,
+      dosage: _dosageController.text,
+      type: _selectedType,
+      startDate: _startDate,
+      endDate: _endDate,
+      reminderTimes: [],
+      daysOfWeek: [],
+      rxcui: _selectedRxcui,
+      ingredientRxcui: _selectedIngredientRxcuis.join(','),
+    );
+
+    final existingMedicines = await repository.getActiveMedicines();
+    final warnings = await interactionService.checkInteractions(
+      newMedicine: tempMedicine,
+      existingMedicines: existingMedicines,
+    );
+    if (!mounted) return;
+
+    if (warnings.isNotEmpty) {
       final proceed = await Navigator.push<bool>(
         context,
         MaterialPageRoute(
           builder: (context) => InteractionWarningScreen(
             medicineName: _nameController.text,
-            conflictingMedicines: interactions,
+            warnings: warnings,
           ),
         ),
       ) ?? false;
       if (!proceed) return;
     }
 
-    // Use existing ID in edit mode, new ID in add mode
     final String medicineId = _isEditMode
         ? _medicineId
         : DateTime.now().millisecondsSinceEpoch.toString();
@@ -166,9 +270,11 @@ void initState() {
           .where((entry) => _selectedDays[entry.key])
           .map((entry) => entry.value)
           .toList(),
+      rxcui: _selectedRxcui,
+      normalizedName: _selectedNormalizedName,
+      ingredientRxcui: _selectedIngredientRxcuis.join(','),
+      dailymedSetid: _selectedDailymedSetid,
     );
-
-    final repository = MedicineRepository();
 
     bool saveSucceeded = true;
     try {
@@ -249,9 +355,10 @@ void initState() {
             key: _formKey,
             child: ListView(
               children: [
-                // Medicine Name
+                // Medicine Name with RxNorm debounced search
                 TextFormField(
                   controller: _nameController,
+                  onChanged: _onNameChanged,
                   decoration: InputDecoration(
                     labelText: 'Medicine Name',
                     labelStyle: Theme.of(context).textTheme.bodyLarge,
@@ -259,6 +366,18 @@ void initState() {
                       borderRadius: BorderRadius.circular(12),
                     ),
                     prefixIcon: const Icon(Icons.medication),
+                    suffixIcon: _isSearching
+                        ? const Padding(
+                            padding: EdgeInsets.all(12.0),
+                            child: SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            ),
+                          )
+                        : _selectedRxcui != null
+                            ? const Icon(Icons.verified, color: Colors.green)
+                            : null,
                   ),
                   style: Theme.of(context).textTheme.bodyLarge,
                   validator: (value) {
@@ -268,6 +387,40 @@ void initState() {
                     return null;
                   },
                 ),
+                // RxNorm suggestions dropdown
+                if (_rxNormSuggestions.isNotEmpty)
+                  Container(
+                    constraints: const BoxConstraints(maxHeight: 200),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey.shade300),
+                      borderRadius: BorderRadius.circular(8),
+                      color: Theme.of(context).cardColor,
+                    ),
+                    child: ListView.builder(
+                      shrinkWrap: true,
+                      itemCount: _rxNormSuggestions.length,
+                      itemBuilder: (context, index) {
+                        final s = _rxNormSuggestions[index];
+                        return ListTile(
+                          dense: true,
+                          title: Text(s['name'] ?? ''),
+                          subtitle: Text(
+                            '${s['tty']} · RxCUI: ${s['rxcui']}',
+                            style: const TextStyle(fontSize: 11, color: Colors.grey),
+                          ),
+                          onTap: () => _selectRxNormSuggestion(s),
+                        );
+                      },
+                    ),
+                  ),
+                if (_selectedRxcui == null && _nameController.text.isNotEmpty && !_isSearching)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4.0),
+                    child: Text(
+                      'Unverified — no RxCUI match selected',
+                      style: TextStyle(color: Colors.orange.shade700, fontSize: 12),
+                    ),
+                  ),
                 const SizedBox(height: 20),
                 
                 // Voice Input Button
@@ -278,6 +431,7 @@ void initState() {
                     final result = await _sttService.speechToText();
                     if (result != null && result.isNotEmpty) {
                       _nameController.text = result;
+                      _onNameChanged(result);
                     } else {
                       if (!context.mounted) return;
                       final message = _sttService.lastSttError ??

@@ -2,13 +2,23 @@ import 'package:sqflite/sqflite.dart';
 import '../models/medicine.dart';
 import '../services/database_service.dart';
 import 'package:medicine_reminder/services/notification_service.dart';
+import 'package:medicine_reminder/services/dailymed_service.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter/foundation.dart';
 
 class MedicineRepository {
-  final DatabaseService _dbService = DatabaseService();
-  final NotificationService _notificationService = NotificationService();
-  
+  final DatabaseService _dbService;
+  final NotificationService _notificationService;
+  final DailyMedService _dailyMedService;
+
+  MedicineRepository({
+    DatabaseService? dbService,
+    NotificationService? notificationService,
+    DailyMedService? dailyMedService,
+  })  : _dbService = dbService ?? DatabaseService(),
+        _notificationService = notificationService ?? NotificationService(),
+        _dailyMedService = dailyMedService ?? DailyMedService();
+
   int _notificationCounter = 0;
 
   /* -------------------- INSERT -------------------- */
@@ -24,6 +34,22 @@ class MedicineRepository {
     _notificationCounter = 0;
 
     await _scheduleAllRecurringNotifications(medicine);
+
+    // Background: Fetch and cache DailyMed drug info if we have an rxcui
+    if (medicine.rxcui != null && medicine.rxcui!.isNotEmpty) {
+      _dailyMedService.getDrugInfo(medicine.rxcui!).catchError((e) {
+        debugPrint('[MedicineRepository] Background DailyMed fetch failed: $e');
+        return null;
+      });
+    }
+  }
+  /* -------------------- DRUG INFO -------------------- */
+
+  /// Retrieves cached DailyMed drug info for a given rxcui.
+  /// Triggers a background refresh if the data is stale.
+  Future<DrugInfo?> getDrugInfo(String rxcui) async {
+    final info = await _dailyMedService.getDrugInfo(rxcui);
+    return info;
   }
 
   /* -------------------- FETCH -------------------- */
@@ -65,6 +91,10 @@ class MedicineRepository {
           endDate: DateTime.parse(map['endDate'] as String),
           reminderTimes: reminderTimes.toList()..sort(),
           daysOfWeek: daysOfWeek.toList(),
+          rxcui: map['rxcui'] as String?,
+          normalizedName: map['normalizedName'] as String?,
+          ingredientRxcui: map['ingredientRxcui'] as String?,
+          dailymedSetid: map['dailymedSetid'] as String?,
         ),
       );
     }
@@ -81,21 +111,19 @@ class MedicineRepository {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
 
-    return allMedicines
-        .where((medicine) {
-          final startDate = DateTime(
-            medicine.startDate.year,
-            medicine.startDate.month,
-            medicine.startDate.day,
-          );
-          final endDate = DateTime(
-            medicine.endDate.year,
-            medicine.endDate.month,
-            medicine.endDate.day,
-          );
-          return !startDate.isAfter(today) && !endDate.isBefore(today);
-        })
-        .toList();
+    return allMedicines.where((medicine) {
+      final startDate = DateTime(
+        medicine.startDate.year,
+        medicine.startDate.month,
+        medicine.startDate.day,
+      );
+      final endDate = DateTime(
+        medicine.endDate.year,
+        medicine.endDate.month,
+        medicine.endDate.day,
+      );
+      return !startDate.isAfter(today) && !endDate.isBefore(today);
+    }).toList();
   }
 
   Future<List<Medicine>> getCompletedMedicines() async {
@@ -142,6 +170,10 @@ class MedicineRepository {
           endDate: endDate,
           reminderTimes: reminderTimes.toList()..sort(),
           daysOfWeek: daysOfWeek.toList(),
+          rxcui: map['rxcui'] as String?,
+          normalizedName: map['normalizedName'] as String?,
+          ingredientRxcui: map['ingredientRxcui'] as String?,
+          dailymedSetid: map['dailymedSetid'] as String?,
         ),
       );
     }
@@ -206,13 +238,16 @@ class MedicineRepository {
 
   Future<void> _scheduleAllRecurringNotifications(Medicine medicine) async {
     final db = await _dbService.database;
-    
+
     debugPrint('');
     debugPrint('[Notifications] ========================================');
-    debugPrint('[Notifications] Scheduling ALL notifications for: ${medicine.name}');
-    debugPrint('[Notifications] Period: ${DateFormat('MMM d').format(medicine.startDate)} - ${DateFormat('MMM d, yyyy').format(medicine.endDate)}');
+    debugPrint(
+        '[Notifications] Scheduling ALL notifications for: ${medicine.name}');
+    debugPrint(
+        '[Notifications] Period: ${DateFormat('MMM d').format(medicine.startDate)} - ${DateFormat('MMM d, yyyy').format(medicine.endDate)}');
     debugPrint('[Notifications] Days: ${medicine.daysOfWeek.join(', ')}');
-    debugPrint('[Notifications] Times per day: ${medicine.reminderTimes.length}');
+    debugPrint(
+        '[Notifications] Times per day: ${medicine.reminderTimes.length}');
     debugPrint('[Notifications] ========================================');
 
     int totalScheduled = 0;
@@ -221,14 +256,13 @@ class MedicineRepository {
     for (final day in medicine.daysOfWeek) {
       // Loop through each reminder time for that day
       for (final time in medicine.reminderTimes) {
-        
         final scheduledCount = await _scheduleRecurringNotificationsForDayTime(
           medicine: medicine,
           dayOfWeek: day,
           timeInMinutes: time,
           db: db,
         );
-        
+
         totalScheduled += scheduledCount;
       }
     }
@@ -247,25 +281,20 @@ class MedicineRepository {
   }) async {
     final int targetWeekday = _getWeekdayIndex(dayOfWeek);
     final DateTime now = DateTime.now();
-    
+
     // Start from the medicine start date (or today if already started)
-    DateTime currentDate = medicine.startDate.isAfter(now) 
-        ? medicine.startDate 
-        : now;
-    
-    currentDate = DateTime(currentDate.year, currentDate.month, currentDate.day);
-    
+    DateTime currentDate =
+        medicine.startDate.isAfter(now) ? medicine.startDate : now;
+
+    currentDate =
+        DateTime(currentDate.year, currentDate.month, currentDate.day);
+
     int occurrenceCount = 0;
-    
-    while (currentDate.isBefore(medicine.endDate) || 
-           currentDate.isAtSameMomentAs(DateTime(
-             medicine.endDate.year, 
-             medicine.endDate.month, 
-             medicine.endDate.day
-           ))) {
-      
+
+    while (currentDate.isBefore(medicine.endDate) ||
+        currentDate.isAtSameMomentAs(DateTime(medicine.endDate.year,
+            medicine.endDate.month, medicine.endDate.day))) {
       if (currentDate.weekday == targetWeekday) {
-        
         DateTime scheduledTime = DateTime(
           currentDate.year,
           currentDate.month,
@@ -273,7 +302,7 @@ class MedicineRepository {
           timeInMinutes ~/ 60,
           timeInMinutes % 60,
         );
-        
+
         if (scheduledTime.isAfter(now)) {
           final int notificationId = await _generateUniqueNotificationId(
             db: db,
@@ -282,17 +311,18 @@ class MedicineRepository {
             timeInMinutes: timeInMinutes,
             scheduledTime: scheduledTime,
           );
-          
+
           await db.insert('reminder_times', {
             'medicineId': medicine.id,
             'time': timeInMinutes,
             'day': dayOfWeek,
             'notificationId': notificationId,
           });
-          
+
           final timeString = _formatTime(timeInMinutes);
-          final payload = '${medicine.id}|${medicine.name}|${medicine.dosage}|$timeString';
-          
+          final payload =
+              '${medicine.id}|${medicine.name}|${medicine.dosage}|$timeString';
+
           try {
             await _notificationService.scheduleNotification(
               id: notificationId,
@@ -301,24 +331,25 @@ class MedicineRepository {
               scheduledTime: scheduledTime,
               payload: payload,
             );
-            
+
             occurrenceCount++;
-            debugPrint('  [OK] #$occurrenceCount: ${DateFormat('MMM d, yyyy').format(scheduledTime)} at $timeString (ID: $notificationId)');
-            
+            debugPrint(
+                '  [OK] #$occurrenceCount: ${DateFormat('MMM d, yyyy').format(scheduledTime)} at $timeString (ID: $notificationId)');
           } catch (e) {
             debugPrint('  [Error] Failed to schedule: $e');
           }
         }
       }
-      
+
       // Move to next day
       currentDate = currentDate.add(const Duration(days: 1));
     }
-    
+
     if (occurrenceCount > 0) {
-      debugPrint('[Summary] Scheduled $occurrenceCount notifications for $dayOfWeek at ${_formatTime(timeInMinutes)}');
+      debugPrint(
+          '[Summary] Scheduled $occurrenceCount notifications for $dayOfWeek at ${_formatTime(timeInMinutes)}');
     }
-    
+
     return occurrenceCount;
   }
 
@@ -362,7 +393,8 @@ class MedicineRepository {
       whereArgs: [medicineId],
     );
 
-    debugPrint('[Cleanup] Cancelling ${rows.length} notifications for medicine $medicineId');
+    debugPrint(
+        '[Cleanup] Cancelling ${rows.length} notifications for medicine $medicineId');
 
     for (final row in rows) {
       final int? id = row['notificationId'] as int?;
@@ -384,14 +416,22 @@ class MedicineRepository {
   /// Convert day name to weekday index (1 = Monday, 7 = Sunday)
   int _getWeekdayIndex(String day) {
     switch (day) {
-      case 'Mon': return 1;
-      case 'Tue': return 2;
-      case 'Wed': return 3;
-      case 'Thu': return 4;
-      case 'Fri': return 5;
-      case 'Sat': return 6;
-      case 'Sun': return 7;
-      default: return 1;
+      case 'Mon':
+        return 1;
+      case 'Tue':
+        return 2;
+      case 'Wed':
+        return 3;
+      case 'Thu':
+        return 4;
+      case 'Fri':
+        return 5;
+      case 'Sat':
+        return 6;
+      case 'Sun':
+        return 7;
+      default:
+        return 1;
     }
   }
 
@@ -434,7 +474,10 @@ class MedicineRepository {
       endDate: DateTime.parse(medicineMap['endDate'] as String),
       reminderTimes: reminderTimes.toList()..sort(),
       daysOfWeek: daysOfWeek.toList(),
+      rxcui: medicineMap['rxcui'] as String?,
+      normalizedName: medicineMap['normalizedName'] as String?,
+      ingredientRxcui: medicineMap['ingredientRxcui'] as String?,
+      dailymedSetid: medicineMap['dailymedSetid'] as String?,
     );
   }
 }
-

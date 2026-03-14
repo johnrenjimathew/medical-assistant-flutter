@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:medicine_reminder/widgets/medicine_card.dart';
 import 'package:medicine_reminder/screens/add_medicine_screen.dart';
 import 'package:medicine_reminder/screens/history_screen.dart';
+import 'package:medicine_reminder/screens/medicine_detail_screen.dart';
 import 'package:medicine_reminder/screens/settings_screen.dart';
 import 'package:medicine_reminder/models/medicine.dart';
 import 'package:medicine_reminder/repositories/medicine_repository.dart';
@@ -186,6 +187,18 @@ class _HomeScreenState extends State<HomeScreen> {
                          final medicine = medicines[index];
                          return MedicineCard(
                            medicine: medicine,
+
+                           // TAP to view details
+                           onTap: () {
+                             Navigator.push(
+                               context,
+                               MaterialPageRoute(
+                                 builder: (_) => MedicineDetailScreen(
+                                   medicine: medicine,
+                                 ),
+                               ),
+                             );
+                           },
 
                            // EDIT
                            onEdit: () async {

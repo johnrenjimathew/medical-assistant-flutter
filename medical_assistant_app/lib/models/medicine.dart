@@ -8,6 +8,12 @@ class Medicine {
   final DateTime endDate;
   final List<int> reminderTimes;
   final List<String> daysOfWeek;
+  
+  // API Integration Fields
+  final String? rxcui;
+  final String? normalizedName;
+  final String? ingredientRxcui;
+  final String? dailymedSetid;
 
   Medicine({
     required this.id,
@@ -19,6 +25,10 @@ class Medicine {
     required this.endDate,
     required this.reminderTimes,
     required this.daysOfWeek,
+    this.rxcui,
+    this.normalizedName,
+    this.ingredientRxcui,
+    this.dailymedSetid,
   });
 
   Map<String, dynamic> toMap() {
@@ -30,6 +40,10 @@ class Medicine {
       'notes': notes,
       'startDate': startDate.toIso8601String(),
       'endDate': endDate.toIso8601String(),
+      'rxcui': rxcui,
+      'normalizedName': normalizedName,
+      'ingredientRxcui': ingredientRxcui,
+      'dailymedSetid': dailymedSetid,
     };
   }
 
@@ -53,6 +67,10 @@ class Medicine {
       endDate: DateTime.parse(map['endDate']),
       reminderTimes: reminderTimes,
       daysOfWeek: daysOfWeek,
+      rxcui: map['rxcui'],
+      normalizedName: map['normalizedName'],
+      ingredientRxcui: map['ingredientRxcui'],
+      dailymedSetid: map['dailymedSetid'],
     );
   }
 
@@ -66,6 +84,10 @@ class Medicine {
     DateTime? endDate,
     List<int>? reminderTimes,
     List<String>? daysOfWeek,
+    String? rxcui,
+    String? normalizedName,
+    String? ingredientRxcui,
+    String? dailymedSetid,
   }) {
     return Medicine(
       id: id ?? this.id,
@@ -77,6 +99,10 @@ class Medicine {
       endDate: endDate ?? this.endDate,
       reminderTimes: reminderTimes ?? this.reminderTimes,
       daysOfWeek: daysOfWeek ?? this.daysOfWeek,
+      rxcui: rxcui ?? this.rxcui,
+      normalizedName: normalizedName ?? this.normalizedName,
+      ingredientRxcui: ingredientRxcui ?? this.ingredientRxcui,
+      dailymedSetid: dailymedSetid ?? this.dailymedSetid,
     );
   }
 }
